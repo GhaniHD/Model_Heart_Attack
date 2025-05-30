@@ -162,12 +162,11 @@
 
     <script>
         document.getElementById('predictionForm').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Mencegah form melakukan submit default
+            event.preventDefault();
 
             const formData = new FormData(this);
             const data = {};
             formData.forEach((value, key) => {
-                // Konversi nilai numerik menjadi angka (int/float)
                 if (['age', 'waist_circumference', 'triglycerides'].includes(key)) {
                     data[key] = parseFloat(value);
                 } else if (['hypertension', 'diabetes', 'obesity', 'previous_heart_disease', 'medication_usage', 'participated_in_free_screening'].includes(key)) {
@@ -177,7 +176,7 @@
                 }
             });
 
-            console.log("Mengirim data:", data); // Debugging: lihat data yang dikirim
+            console.log("Mengirim data:", data);
 
             const resultDiv = document.getElementById('result');
             const errorDiv = document.getElementById('error');
@@ -194,16 +193,16 @@
                 });
 
                 const result = await response.json();
-                console.log("Respons API:", result); // Debugging: lihat respons API
+                console.log("Respons API:", result); 
 
-                if (response.ok) { // Status code 200-299
+                if (response.ok) {
                     resultDiv.innerHTML = `
                         Prediksi: <strong>${result.prediction_label}</strong><br>
                         Probabilitas Tidak Serangan Jantung: ${(result.probability_no_heart_attack * 100).toFixed(2)}%<br>
                         Probabilitas Serangan Jantung: ${(result.probability_yes_heart_attack * 100).toFixed(2)}%
                     `;
                     resultDiv.style.display = 'block';
-                } else { // Status code 4xx, 5xx
+                } else { 
                     errorDiv.textContent = `Error: ${result.error || 'Terjadi kesalahan tidak dikenal.'}`;
                     errorDiv.style.display = 'block';
                 }

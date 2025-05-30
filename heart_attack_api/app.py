@@ -2,19 +2,18 @@ import os
 import pickle
 import pandas as pd
 import numpy as np
-from flask import Flask, request, jsonify, render_template # Tambahkan render_template
+from flask import Flask, request, jsonify, render_template
 import onnxruntime as ort
-from flask_cors import CORS # Tambahkan ini
+from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app) # Inisialisasi CORS untuk aplikasi Anda
+CORS(app)
 
 # Path ke model dan encoders
 MODEL_PATH = 'models/heart_attack_model.onnx'
 ENCODERS_DIR = 'models/encoders'
 
 # Definisikan kolom-kolom yang diharapkan oleh model
-# Pastikan urutannya sama persis dengan saat model dilatih!
 EXPECTED_COLUMNS = [
     'age', 'gender', 'hypertension', 'diabetes', 'obesity',
     'waist_circumference', 'smoking_status', 'alcohol_consumption',
@@ -23,7 +22,6 @@ EXPECTED_COLUMNS = [
 ]
 
 # Muat model dan encoders saat aplikasi dimulai
-# Ini dilakukan sekali saja saat server dijalankan untuk efisiensi
 try:
     ort_session = ort.InferenceSession(MODEL_PATH)
 
@@ -38,7 +36,6 @@ try:
     with open(os.path.join(ENCODERS_DIR, 'scaler.pkl'), 'rb') as f:
         scaler = pickle.load(f)
 
-    # Simpan semua label encoder dalam dictionary untuk akses mudah
     le_dict = {
         'gender': gender_encoder,
         'smoking_status': smoking_status_encoder,
@@ -49,23 +46,18 @@ try:
 
 except Exception as e:
     print(f"Error saat memuat model atau encoders: {e}")
-    # Jika ada error fatal saat startup, sebaiknya aplikasi tidak berjalan
     exit()
 
-# Fungsi helper untuk safe label encoding
 def safe_label_encode(le, value):
     """Mengkodekan nilai kategorikal dengan LabelEncoder. Menangani nilai tidak dikenal."""
     if value in le.classes_:
         return le.transform([value])[0]
     else:
-        # Jika nilai tidak dikenal, kembalikan 0 atau nilai default lain yang sesuai
-        # Ini bisa disesuaikan dengan kebutuhan penanganan error Anda
-        return 0 # Atau le.transform([le.classes_[0]]) jika ingin default ke kelas pertama yang dikenal
+        return 0
 
-# --- TAMBAHAN BARU UNTUK UI SEDERHANA ---
 @app.route('/')
 def home():
-    return render_template('index.html') # Menyajikan file HTML
+    return render_template('index.html') 
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -74,7 +66,6 @@ def predict():
 
     data = request.get_json()
 
-    # Validasi input: pastikan semua kolom yang diharapkan ada
     missing_keys = [key for key in EXPECTED_COLUMNS if key not in data]
     if missing_keys:
         return jsonify({"error": f"Kunci yang hilang dalam JSON: {', '.join(missing_keys)}"}), 400
@@ -92,7 +83,6 @@ def predict():
                 # Jika kolom kategorikal tidak ada atau encoder tidak dimuat, set ke 0
                 df_input[col] = 0
 
-        # --- PERBAIKAN PENTING UNTUK SCALER ---
         # Preprocessing: Scaling fitur numerikal
         numerical_columns = ['age', 'waist_circumference', 'triglycerides']
 
@@ -105,7 +95,6 @@ def predict():
 
         # Masukkan kembali data yang sudah diskalakan ke DataFrame input utama
         df_input[numerical_columns] = scaled_data
-        # --- AKHIR PERBAIKAN PENTING ---
 
         # Pastikan urutan kolom sesuai dengan yang diharapkan oleh model
         # Gunakan EXPECTED_COLUMNS untuk reindex DataFrame
