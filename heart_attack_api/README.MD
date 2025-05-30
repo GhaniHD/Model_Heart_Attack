@@ -1,4 +1,4 @@
-Tentu, ini adalah `README.md` yang ringkas dan jelas, khusus untuk tim *backend* dan *frontend* Anda.
+
 
 ---
 
