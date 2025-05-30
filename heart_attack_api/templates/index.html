@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediksi Risiko Serangan Jantung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 30px auto;
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"],
+        select {
+            width: calc(100% - 22px); /* Adjust for padding and border */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            margin-top: 3px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #e9e9e9;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prediksi Risiko Serangan Jantung</h1>
+        <form id="predictionForm">
+            <div class="form-group">
+                <label for="age">Usia:</label>
+                <input type="number" id="age" name="age" required value="45">
+            </div>
+            <div class="form-group">
+                <label for="gender">Jenis Kelamin:</label>
+                <select id="gender" name="gender" required>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="hypertension">Hipertensi:</label>
+                <select id="hypertension" name="hypertension" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="diabetes">Diabetes:</label>
+                <select id="diabetes" name="diabetes" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="obesity">Obesitas:</label>
+                <select id="obesity" name="obesity" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="waist_circumference">Lingkar Pinggang (cm):</label>
+                <input type="number" id="waist_circumference" name="waist_circumference" required value="85">
+            </div>
+            <div class="form-group">
+                <label for="smoking_status">Status Merokok:</label>
+                <select id="smoking_status" name="smoking_status" required>
+                    <option value="Never Smoker">Never Smoker</option>
+                    <option value="Current Smoker">Current Smoker</option>
+                    <option value="Former Smoker">Former Smoker</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alcohol_consumption">Konsumsi Alkohol:</label>
+                <select id="alcohol_consumption" name="alcohol_consumption" required>
+                    <option value="Never">Never</option>
+                    <option value="Rarely">Rarely</option>
+                    <option value="Regularly">Regularly</option>
+                    <option value="Daily">Daily</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="triglycerides">Trigliserida:</label>
+                <input type="number" id="triglycerides" name="triglycerides" required value="150">
+            </div>
+            <div class="form-group">
+                <label for="previous_heart_disease">Riwayat Penyakit Jantung Sebelumnya:</label>
+                <select id="previous_heart_disease" name="previous_heart_disease" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="medication_usage">Penggunaan Obat-obatan:</label>
+                <select id="medication_usage" name="medication_usage" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="participated_in_free_screening">Berpartisipasi Skrining Gratis:</label>
+                <select id="participated_in_free_screening" name="participated_in_free_screening" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+            <button type="submit">Prediksi</button>
+        </form>
+        <div id="result" class="result" style="display:none;"></div>
+        <div id="error" class="error" style="display:none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Mencegah form melakukan submit default
+
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                // Konversi nilai numerik menjadi angka (int/float)
+                if (['age', 'waist_circumference', 'triglycerides'].includes(key)) {
+                    data[key] = parseFloat(value);
+                } else if (['hypertension', 'diabetes', 'obesity', 'previous_heart_disease', 'medication_usage', 'participated_in_free_screening'].includes(key)) {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value;
+                }
+            });
+
+            console.log("Mengirim data:", data); // Debugging: lihat data yang dikirim
+
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                console.log("Respons API:", result); // Debugging: lihat respons API
+
+                if (response.ok) { // Status code 200-299
+                    resultDiv.innerHTML = `
+                        Prediksi: <strong>${result.prediction_label}</strong><br>
+                        Probabilitas Tidak Serangan Jantung: ${(result.probability_no_heart_attack * 100).toFixed(2)}%<br>
+                        Probabilitas Serangan Jantung: ${(result.probability_yes_heart_attack * 100).toFixed(2)}%
+                    `;
+                    resultDiv.style.display = 'block';
+                } else { // Status code 4xx, 5xx
+                    errorDiv.textContent = `Error: ${result.error || 'Terjadi kesalahan tidak dikenal.'}`;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Ada masalah dengan permintaan fetch:', error);
+                errorDiv.textContent = `Tidak dapat terhubung ke server API: ${error.message}`;
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
