@@ -9,11 +9,11 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Path ke model dan encoders
+# --- Konfigurasi ---
 MODEL_PATH = 'models/heart_attack_model.onnx'
 ENCODERS_DIR = 'models/encoders'
 
-# Definisikan kolom-kolom yang diharapkan oleh model
+# Kolom-kolom fitur yang diharapkan model (harus sesuai dengan pelatihan)
 EXPECTED_COLUMNS = [
     'age', 'gender', 'hypertension', 'diabetes', 'obesity',
     'waist_circumference', 'smoking_status', 'alcohol_consumption',
@@ -21,46 +21,75 @@ EXPECTED_COLUMNS = [
     'participated_in_free_screening'
 ]
 
-# Muat model dan encoders saat aplikasi dimulai
+# Kolom kategori yang perlu di-encode (nilai string seperti 'Male', 'Never Smoker')
+CATEGORICAL_COLUMNS = ['gender', 'smoking_status', 'alcohol_consumption']
+
+# Kolom numerik yang perlu di-scale (nilai continuous seperti usia, lingkar pinggang)
+NUMERICAL_COLUMNS_TO_SCALE = ['age', 'waist_circumference', 'triglycerides']
+
+# Label prediksi akhir
+PREDICTION_LABELS = {
+    0: "Tidak Berisiko Serangan Jantung",
+    1: "Berisiko Serangan Jantung"
+}
+
+# --- Pemuatan Model dan Encoders ---
+ort_session = None
+scaler = None
+target_label_encoder = None
+le_dict = {}
+
 try:
     ort_session = ort.InferenceSession(MODEL_PATH)
-
+    
+    # Muat LabelEncoder untuk fitur kategorikal
     with open(os.path.join(ENCODERS_DIR, 'gender_encoder.pkl'), 'rb') as f:
-        gender_encoder = pickle.load(f)
+        le_dict['gender'] = pickle.load(f)
     with open(os.path.join(ENCODERS_DIR, 'smoking_status_encoder.pkl'), 'rb') as f:
-        smoking_status_encoder = pickle.load(f)
+        le_dict['smoking_status'] = pickle.load(f)
     with open(os.path.join(ENCODERS_DIR, 'alcohol_consumption_encoder.pkl'), 'rb') as f:
-        alcohol_consumption_encoder = pickle.load(f)
+        le_dict['alcohol_consumption'] = pickle.load(f)
+    
+    # Muat LabelEncoder untuk target 
     with open(os.path.join(ENCODERS_DIR, 'label_encoder.pkl'), 'rb') as f:
         target_label_encoder = pickle.load(f)
+        
+    # Muat Scaler untuk fitur numerik
     with open(os.path.join(ENCODERS_DIR, 'scaler.pkl'), 'rb') as f:
         scaler = pickle.load(f)
-
-    le_dict = {
-        'gender': gender_encoder,
-        'smoking_status': smoking_status_encoder,
-        'alcohol_consumption': alcohol_consumption_encoder
-    }
-
-    print("Model dan encoders berhasil dimuat!")
+        
+    print("[*] Model dan encoder berhasil dimuat!")
 
 except Exception as e:
-    print(f"Error saat memuat model atau encoders: {e}")
+    print(f"[!] ERROR FATAL: Gagal memuat model atau encoder: {e}")
+    print("[!] Pastikan semua file model dan encoder tersimpan dengan benar.")
     exit()
 
-def safe_label_encode(le, value):
-    """Mengkodekan nilai kategorikal dengan LabelEncoder. Menangani nilai tidak dikenal."""
-    if value in le.classes_:
-        return le.transform([value])[0]
-    else:
-        return 0
+def encode_kategori(le, nilai):
+    """Mengkodekan nilai kategori menggunakan LabelEncoder, menangani nilai tidak dikenal."""
+    nilai_str = str(nilai)
+    if nilai_str in le.classes_:
+        return le.transform([nilai_str])[0]
+    return 0
 
+# --- Definisi Endpoint API ---
 @app.route('/')
 def home():
-    return render_template('index.html') 
+    feature_options = {
+        'gender': ['Male', 'Female'],
+        'smoking_status': ['Never Smoker', 'Current Smoker', 'Former Smoker'],
+        'alcohol_consumption': ['Never', 'Rarely', 'Regularly', 'Daily'],
+        'hypertension': ['0', '1'], 'diabetes': ['0', '1'], 'obesity': ['0', '1'],
+        'previous_heart_disease': ['0', '1'], 'medication_usage': ['0', '1'],
+        'participated_in_free_screening': ['0', '1']
+    }
+    return render_template('index.html', 
+                           expected_features=EXPECTED_COLUMNS,
+                           categorical_columns=CATEGORICAL_COLUMNS,
+                           feature_options=feature_options)
 
 @app.route('/predict', methods=['POST'])
-def predict():
+def prediksi_serangan_jantung():
     if not request.is_json:
         return jsonify({"error": "Permintaan harus dalam format JSON"}), 400
 
@@ -68,66 +97,66 @@ def predict():
 
     missing_keys = [key for key in EXPECTED_COLUMNS if key not in data]
     if missing_keys:
-        return jsonify({"error": f"Kunci yang hilang dalam JSON: {', '.join(missing_keys)}"}), 400
+        return jsonify({
+            "error": "Fitur-fitur yang diperlukan tidak ada dalam permintaan JSON.",
+            "missing_features": missing_keys,
+            "expected_features": EXPECTED_COLUMNS
+        }), 400
 
     try:
-        # Konversi data input ke DataFrame
-        df_input = pd.DataFrame([data])
+        df_input = pd.DataFrame([data], columns=EXPECTED_COLUMNS)
 
         # Preprocessing: Encoding fitur kategorikal
-        categorical_columns = ['gender', 'smoking_status', 'alcohol_consumption']
-        for col in categorical_columns:
-            if col in df_input.columns and col in le_dict:
-                df_input[col] = df_input[col].apply(lambda x: safe_label_encode(le_dict[col], x))
-            else:
-                # Jika kolom kategorikal tidak ada atau encoder tidak dimuat, set ke 0
-                df_input[col] = 0
+        for col in CATEGORICAL_COLUMNS:
+            df_input[col] = df_input[col].apply(lambda x: encode_kategori(le_dict[col], x))
 
-        # Preprocessing: Scaling fitur numerikal
-        numerical_columns = ['age', 'waist_circumference', 'triglycerides']
+        # Preprocessing: Scaling fitur numerik continuous
+        for col in NUMERICAL_COLUMNS_TO_SCALE:
+            df_input[col] = pd.to_numeric(df_input[col], errors='coerce')
+            
+            # Imputasi nilai NaN dengan mean dari scaler (penting agar scaler tidak error)
+            col_idx_in_scaler = list(scaler.feature_names_in_).index(col)
+            df_input[col].fillna(scaler.mean_[col_idx_in_scaler], inplace=True)
+            
+        # Lakukan scaling hanya pada kolom yang memang perlu di-scale
+        scaled_data = scaler.transform(df_input[NUMERICAL_COLUMNS_TO_SCALE])
+        df_input[NUMERICAL_COLUMNS_TO_SCALE] = scaled_data
 
-        # Pastikan hanya kolom numerik yang ada di input yang akan diskalakan
-        # dan buat salinan untuk menghindari SettingWithCopyWarning
-        df_numerical = df_input[numerical_columns].copy()
-
-        # Skala semua kolom numerik sekaligus
-        scaled_data = scaler.transform(df_numerical)
-
-        # Masukkan kembali data yang sudah diskalakan ke DataFrame input utama
-        df_input[numerical_columns] = scaled_data
-
-        # Pastikan urutan kolom sesuai dengan yang diharapkan oleh model
-        # Gunakan EXPECTED_COLUMNS untuk reindex DataFrame
+        # Pastikan urutan kolom sesuai dengan yang diharapkan oleh model ONNX
         processed_input = df_input[EXPECTED_COLUMNS].to_numpy().astype(np.float32)
 
-        # Lakukan inferensi
+        # Inferensi dengan ONNX Runtime
         input_name = ort_session.get_inputs()[0].name
-        outputs = ort_session.run(None, {input_name: processed_input})
-        y_pred_proba = outputs[0][0]
+        output_name = ort_session.get_outputs()[0].name
+        
+        outputs = ort_session.run([output_name], {input_name: processed_input})
+        probabilitas_prediksi = outputs[0][0]
 
-        # Decode hasil prediksi
-        y_pred_label_idx = int(np.argmax(y_pred_proba))
-        predicted_label_raw = target_label_encoder.inverse_transform([y_pred_label_idx])[0]
+        # Decode hasil prediksi: dari indeks ke label deskriptif
+        idx_label_prediksi = int(np.argmax(probabilitas_prediksi))
+        label_prediksi_raw = target_label_encoder.inverse_transform([idx_label_prediksi])[0]
+        
+        # Konversi label target asli (misal '0' atau '1' sebagai string) ke label yang lebih deskriptif
+        label_final = PREDICTION_LABELS.get(int(str(label_prediksi_raw)), "Tidak Dikenal")
 
-        if str(predicted_label_raw) == '0':
-            predicted_label = "Tidak"
-        elif str(predicted_label_raw) == '1':
-            predicted_label = "Ya"
-        else:
-            predicted_label = str(predicted_label_raw) 
-
-        probability_no_attack = float(y_pred_proba[0])
-        probability_yes_attack = float(y_pred_proba[1])
-
-
+        # Ambil probabilitas untuk masing-masing kelas
+        probabilitas_tidak_serangan = float(probabilitas_prediksi[0])
+        probabilitas_serangan = float(probabilitas_prediksi[1])
+        
+        # Kirim Respons JSON
         return jsonify({
-            "prediction_label": predicted_label,
-            "probability_no_heart_attack": float(probability_no_attack),
-            "probability_yes_heart_attack": float(probability_yes_attack)
+            "status": "success",
+            "prediction_label": label_final,
+            "probability_no_heart_attack": probabilitas_tidak_serangan,
+            "probability_yes_heart_attack": probabilitas_serangan,
+            "input_data_received": data # Mengembalikan input untuk referensi
         })
 
     except Exception as e:
         return jsonify({"error": f"Terjadi kesalahan saat memproses permintaan: {str(e)}"}), 500
 
 if __name__ == '__main__':
+    print("\n[+] Aplikasi Flask siap dijalankan.")
+    print(f"    Akses UI: http://127.0.0.1:5000/")
+    print(f"    Endpoint API: http://127.0.0.1:5000/predict (POST)")
     app.run(debug=True, host='0.0.0.0', port=5000)
