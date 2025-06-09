@@ -12,20 +12,21 @@ Tim *frontend* perlu memahami data yang akan dikirimkan ke *backend* untuk menda
 
 Model membutuhkan data dalam format spesifik. Berikut adalah fitur-fitur yang diharapkan beserta tipe datanya:
 
-| Fitur | Tipe Data Asli | Contoh | Keterangan |
-| :------------------------------ | :---------------------- | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| `age` | Numerik (Integer) | `55` | Usia pasien. |
-| `gender` | Kategorikal (String) | `Male`, `Female` | Jenis kelamin pasien. |
-| `hypertension` | Numerik (Binary) | `0`, `1` | Riwayat hipertensi (0: Tidak, 1: Ya). |
-| `diabetes` | Numerik (Binary) | `0`, `1` | Riwayat diabetes (0: Tidak, 1: Ya). |
-| `obesity` | Numerik (Binary) | `0`, `1` | Riwayat obesitas (0: Tidak, 1: Ya). |
-| `waist_circumference` | Numerik (Float) | `90.5` | Lingkar pinggang. |
-| `smoking_status` | Kategorikal (String) | `Non-smoker`, `Former Smoker`, `Regular` | Status merokok pasien. |
-| `alcohol_consumption` | Kategorikal (String) | `Never`, `Moderate`, `Heavy` | Tingkat konsumsi alkohol pasien. |
-| `triglycerides` | Numerik (Float) | `150.2` | Tingkat trigliserida dalam darah. |
-| `previous_heart_disease` | Numerik (Binary) | `0`, `1` | Riwayat penyakit jantung sebelumnya (0: Tidak, 1: Ya). |
-| `medication_usage` | Numerik (Binary) | `0`, `1` | Penggunaan obat-obatan (0: Tidak, 1: Ya). |
-| `participated_in_free_screening` | Numerik (Binary) | `0`, `1` | Partisipasi dalam *screening* gratis (0: Tidak, 1: Ya). |
+| Fitur                            | Tipe Data Asli       | Contoh                                   | Keterangan                                              | Cara Input                                         |
+| :------------------------------- | :------------------- | :--------------------------------------- | :------------------------------------------------------ | :------------------------------------------------- |
+| `age`                            | Numerik (Integer)    | `55`                                     | Usia pasien.                                            | Input angka                                        |
+| `gender`                         | Kategorikal (String) | `Male`, `Female`                         | Jenis kelamin pasien.                                   | Dropdown: `Male`, `Female`                         |
+| `hypertension`                   | Numerik (Binary)     | `0`, `1`                                 | Riwayat hipertensi (0: Tidak, 1: Ya).                   | Checkbox / Toggle                                  |
+| `diabetes`                       | Numerik (Binary)     | `0`, `1`                                 | Riwayat diabetes (0: Tidak, 1: Ya).                     | Checkbox / Toggle                                  |
+| `obesity`                        | Numerik (Binary)     | `0`, `1`                                 | Riwayat obesitas (0: Tidak, 1: Ya).                     | Checkbox / Toggle                                  |
+| `waist_circumference`            | Numerik (Float)      | `90.5`                                   | Lingkar pinggang (dalam cm).                            | Input angka desimal                                |
+| `smoking_status`                 | Kategorikal (String) | `Non-smoker`, `Former Smoker`, `Regular` | Status merokok pasien.                                  | Dropdown: `Non-smoker`, `Former Smoker`, `Regular` |
+| `alcohol_consumption`            | Kategorikal (String) | `Never`, `Moderate`, `Heavy`             | Tingkat konsumsi alkohol pasien.                        | Dropdown: `Never`, `Moderate`, `Heavy`             |
+| `triglycerides`                  | Numerik (Float)      | `150.2`                                  | Tingkat trigliserida dalam darah (mg/dL).               | Input angka desimal                                |
+| `previous_heart_disease`         | Numerik (Binary)     | `0`, `1`                                 | Riwayat penyakit jantung sebelumnya (0: Tidak, 1: Ya).  | Checkbox / Toggle                                  |
+| `medication_usage`               | Numerik (Binary)     | `0`, `1`                                 | Penggunaan obat-obatan (0: Tidak, 1: Ya).               | Checkbox / Toggle                                  |
+| `participated_in_free_screening` | Numerik (Binary)     | `0`, `1`                                 | Partisipasi dalam *screening* gratis (0: Tidak, 1: Ya). | Checkbox / Toggle                                  |
+
 
 ---
 
